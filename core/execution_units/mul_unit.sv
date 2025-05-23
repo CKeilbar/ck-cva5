@@ -44,7 +44,7 @@ module mul_unit
         unit_writeback_interface.unit wb
     );
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
-    
+
     logic signed [63:0] result;
     logic mulh [2];
     logic valid [2];
@@ -61,7 +61,9 @@ module mul_unit
 
     ////////////////////////////////////////////////////
     //Decode
-    assign unit_needed = decode_stage.instruction inside {MUL, MULH, MULHSU, MULHU};
+    assign instruction = decode_stage.instruction;
+
+    assign unit_needed = instruction inside {MUL, MULH, MULHSU, MULHU};
     always_comb begin
         uses_rs = '0;
         uses_rs[RS1] = unit_needed;
@@ -69,7 +71,6 @@ module mul_unit
         uses_rd = unit_needed;
     end
 
-    assign instruction = decode_stage.instruction;
     always_ff @(posedge clk) begin
         if (issue_stage_ready) begin
             rs1_is_signed <= instruction.fn3[1:0] inside {MULH_fn3[1:0], MULHSU_fn3[1:0]};

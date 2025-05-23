@@ -27,7 +27,7 @@
     import cva5_types::*;
     import fpu_types::*;
     import opcodes::*;
-    
+
     #(
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
     )
@@ -53,6 +53,7 @@
         output fflags_t fflags
     );
 
+    common_instruction_t instruction;
     fp_madd_inputs_t madd_inputs;
     fp_div_inputs_t div_inputs;
     fp_sqrt_inputs_t sqrt_inputs;
@@ -69,15 +70,17 @@
 
     ////////////////////////////////////////////////////
     //Decode
+    assign instruction = decode_stage.instruction;
+
     always_comb begin
         uses_rs = '0;
-        uses_rs[RS1] = decode_stage.instruction inside {
+        uses_rs[RS1] = instruction inside {
             SP_FCVT_S_W, SP_FCVT_S_WU, SP_FMV_W_X,
             DP_FCVT_D_W, DP_FCVT_D_WU
         };
 
         fp_uses_rs = '0;
-        fp_uses_rs[RS1] = decode_stage.instruction inside {
+        fp_uses_rs[RS1] = instruction inside {
             SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD, SP_FADD, SP_FSUB, SP_FMUL,
             SP_FDIV, SP_FSQRT, SP_FSGNJ, SP_FSGNJN, SP_FSGNJX, SP_FMIN, SP_FMAX,
             SP_FCVT_W_S, SP_FCVT_WU_S, SP_FMV_X_W, SP_FEQ, SP_FLT, SP_FLE, SP_FCLASS,
@@ -85,7 +88,7 @@
             DP_FDIV, DP_FSQRT, DP_FSGNJ, DP_FSGNJN, DP_FSGNJX, DP_FMIN, DP_FMAX,
             DP_FCVT_S_D, DP_FCVT_D_S, DP_FEQ, DP_FLT, DP_FLE, DP_FCLASS, DP_FCVT_W_D, DP_FCVT_WU_D
         };
-        fp_uses_rs[RS2] = decode_stage.instruction inside {
+        fp_uses_rs[RS2] = instruction inside {
             SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD, SP_FADD, SP_FSUB, SP_FMUL,
             SP_FDIV, SP_FSQRT, SP_FSGNJ, SP_FSGNJN, SP_FSGNJX, SP_FMIN, SP_FMAX,
             SP_FEQ, SP_FLT, SP_FLE,
@@ -93,16 +96,16 @@
             DP_FDIV, DP_FSQRT, DP_FSGNJ, DP_FSGNJN, DP_FSGNJX, DP_FMIN, DP_FMAX,
             DP_FEQ, DP_FLT, DP_FLE
         };
-        fp_uses_rs[RS3] = decode_stage.instruction inside {
+        fp_uses_rs[RS3] = instruction
             SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD,
             DP_FMADD, DP_FMSUB, DP_FNMSUB, DP_FNMADD
         };
 
-        uses_rd = decode_stage.instruction inside {
+        uses_rd = instruction
             SP_FCVT_W_S, SP_FCVT_WU_S, SP_FMV_X_W, SP_FEQ, SP_FLT, SP_FLE, SP_FCLASS,
             DP_FEQ, DP_FLT, DP_FLE, DP_FCLASS, DP_FCVT_W_D, DP_FCVT_WU_D
         };
-        fp_uses_rd = decode_stage.instruction inside {
+        fp_uses_rd = instruction
             SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD, SP_FADD, SP_FSUB, SP_FMUL,
             SP_FDIV, SP_FSQRT, SP_FSGNJ, SP_FSGNJN, SP_FSGNJX, SP_FMIN, SP_FMAX,
             SP_FCVT_S_W, SP_FCVT_S_WU, SP_FMV_W_X,
@@ -111,7 +114,7 @@
             DP_FCVT_S_D, DP_FCVT_D_S, DP_FCVT_D_W, DP_FCVT_D_WU
         };
 
-        unit_needed = decode_stage.instruction inside {
+        unit_needed = instruction inside {
             SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD, SP_FADD, SP_FSUB, SP_FMUL,
             DP_FMADD, DP_FMSUB, DP_FNMSUB, DP_FNMADD, DP_FADD, DP_FSUB, DP_FMUL,
             SP_FDIV, SP_FSQRT,
@@ -181,29 +184,29 @@
     always_ff @(posedge clk) begin
         if (issue_stage_ready) begin
             //Only the instructions that convert their arguments from s->d
-            is_single <= decode_stage.instruction inside {SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD, SP_FADD, SP_FSUB, SP_FMUL, SP_FDIV, SP_FSQRT, SP_FMIN, SP_FMAX, SP_FCVT_S_W, SP_FCVT_S_WU, DP_FCVT_D_S, SP_FCVT_W_S, SP_FCVT_WU_S, SP_FEQ, SP_FLT, SP_FLE, SP_FCLASS};
+            is_single <= instruction inside {SP_FMADD, SP_FMSUB, SP_FNMSUB, SP_FNMADD, SP_FADD, SP_FSUB, SP_FMUL, SP_FDIV, SP_FSQRT, SP_FMIN, SP_FMAX, SP_FCVT_S_W, SP_FCVT_S_WU, DP_FCVT_D_S, SP_FCVT_W_S, SP_FCVT_WU_S, SP_FEQ, SP_FLT, SP_FLE, SP_FCLASS};
             //Partial decoding to distinguish instructions from each other
-            is_fma <= ~decode_stage.instruction[4];
-            is_fmul <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b0??10};
-            is_fadd <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b0000?};
-            is_div <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b00?11};
-            is_sqrt <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b01?1?};
-            is_i2f <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b1?01?};
-            is_mv_f2i <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b1110?} & ~decode_stage.instruction[12];
-            is_s2d <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b01?0?} & ~decode_stage.instruction[20];
-            is_d2s <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b01?0?} & decode_stage.instruction[20];
-            is_minmax <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b0?1?1};
-            is_sign_inj <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b0?1?0};
-            is_sign_inj_single <= ~decode_stage.instruction[25];
-            is_f2i <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b1?00?};
-            is_mv_i2f <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b1?11?};
-            is_fcmp <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b10???};
-            is_class <= decode_stage.instruction[4] & decode_stage.instruction[31:27] inside {5'b1110?} & decode_stage.instruction[12];
+            is_fma <= ~instruction[4];
+            is_fmul <= instruction[4] & instruction[31:27] inside {5'b0??10};
+            is_fadd <= instruction[4] & instruction[31:27] inside {5'b0000?};
+            is_div <= instruction[4] & instruction[31:27] inside {5'b00?11};
+            is_sqrt <= instruction[4] & instruction[31:27] inside {5'b01?1?};
+            is_i2f <= instruction[4] & instruction[31:27] inside {5'b1?01?};
+            is_mv_f2i <= instruction[4] & instruction[31:27] inside {5'b1110?} & ~instruction[12];
+            is_s2d <= instruction[4] & instruction[31:27] inside {5'b01?0?} & ~instruction[20];
+            is_d2s <= instruction[4] & instruction[31:27] inside {5'b01?0?} & instruction[20];
+            is_minmax <= instruction[4] & instruction[31:27] inside {5'b0?1?1};
+            is_sign_inj <= instruction[4] & instruction[31:27] inside {5'b0?1?0};
+            is_sign_inj_single <= ~instruction[25];
+            is_f2i <= instruction[4] & instruction[31:27] inside {5'b1?00?};
+            is_mv_i2f <= instruction[4] & instruction[31:27] inside {5'b1?11?};
+            is_fcmp <= instruction[4] & instruction[31:27] inside {5'b10???};
+            is_class <= instruction[4] & instruction[31:27] inside {5'b1110?} & instruction[12];
             //Double duty for both FADD and FMA
-            add <= decode_stage.instruction[4] ? ~decode_stage.instruction[27] : decode_stage.instruction[3:2] inside {2'b00, 2'b10};
-            neg_mul <= decode_stage.instruction[3];
-            conv_signed <= ~decode_stage.instruction[20];
-            rm_r <= decode_stage.instruction[14:12];
+            add <= instruction[4] ? ~instruction[27] : instruction[3:2] inside {2'b00, 2'b10};
+            neg_mul <= instruction[3];
+            conv_signed <= ~instruction[20];
+            rm_r <= instruction[14:12];
         end
     end
 

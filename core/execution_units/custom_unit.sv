@@ -58,12 +58,12 @@ module custom_unit
 
     //The following signals should be asserted when the decoded instruction
     //is handled by this execution unit.
-    assign unit_needed = decode_stage.instruction inside {CUSTOM};
+    assign unit_needed = instruction inside {CUSTOM};
     always_comb begin
         uses_rs = '0;
-        uses_rs[RS1] = decode_stage.instruction inside {CUSTOM};
-        uses_rs[RS2] = decode_stage.instruction inside {CUSTOM};
-        uses_rd = decode_stage.instruction inside {CUSTOM};
+        uses_rs[RS1] = instruction inside {CUSTOM};
+        uses_rs[RS2] = instruction inside {CUSTOM};
+        uses_rd = instruction inside {CUSTOM};
     end
     ////////////////////////////////////////////////////
     //Issue

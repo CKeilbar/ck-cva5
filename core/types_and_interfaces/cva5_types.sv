@@ -35,13 +35,6 @@ package cva5_types;
     typedef logic [3:0] addr_hash_t;
     typedef logic [5:0] phys_addr_t;
 
-    typedef enum logic [1:0] {
-        ALU_CONSTANT = 2'b00,
-        ALU_ADD_SUB = 2'b01,
-        ALU_SLT = 2'b10,
-        ALU_SHIFT = 2'b11
-    } alu_op_t;
-
     typedef struct packed{
         logic valid;
         logic possible;
@@ -206,7 +199,7 @@ package cva5_types;
         logic timer;
         logic external;
     } interrupt_t;
-    
+
     typedef enum {
         FETCH_EARLY_BR_CORRECTION_STAT,
         FETCH_SUB_UNIT_STALL_STAT,

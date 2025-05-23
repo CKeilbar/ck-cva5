@@ -39,7 +39,7 @@ module branch_unit
         output logic unit_needed,
         output logic [REGFILE_READ_PORTS-1:0] uses_rs,
         output logic uses_rd,
-        
+
         input issue_packet_t issue_stage,
         input logic issue_stage_ready,
         input logic [31:0] constant_alu,
@@ -79,15 +79,15 @@ module branch_unit
     //Decode
     assign instruction = decode_stage.instruction;
 
-    assign unit_needed = decode_stage.instruction inside {
+    assign unit_needed = instruction inside {
         BEQ, BNE, BLT, BGE, BLTU, BGEU, JALR, JAL
     };
     always_comb begin
         uses_rs = '0;
-        uses_rs[RS1] = decode_stage.instruction inside {
+        uses_rs[RS1] = instruction inside {
             BEQ, BNE, BLT, BGE, BLTU, BGEU, JALR
         };
-        uses_rs[RS2] = decode_stage.instruction inside {
+        uses_rs[RS2] = instruction inside {
             BEQ, BNE, BLT, BGE, BLTU, BGEU
         };
         uses_rd = 0;//JALR/JAL writeback handled by ALU
@@ -120,12 +120,12 @@ module branch_unit
 
     logic [20:0] pc_offset;
     logic [20:0] pc_offset_r;
-    assign jal_imm = {decode_stage.instruction[31], decode_stage.instruction[19:12], decode_stage.instruction[20], decode_stage.instruction[30:21]};
-    assign jalr_imm = decode_stage.instruction[31:20];
-    assign br_imm = {decode_stage.instruction[31], decode_stage.instruction[7], decode_stage.instruction[30:25], decode_stage.instruction[11:8]};
+    assign jal_imm = {instruction[31], instruction[19:12], instruction[20], instruction[30:21]};
+    assign jalr_imm = instruction[31:20];
+    assign br_imm = {instruction[31], instruction[7], instruction[30:25], instruction[11:8]};
 
     always_comb begin
-        case (decode_stage.instruction[3:2])
+        case (instruction[3:2])
             2'b11 : pc_offset = 21'(signed'({jal_imm, 1'b0}));
             2'b01 : pc_offset = 21'(signed'(jalr_imm));
             default : pc_offset = 21'(signed'({br_imm, 1'b0}));
@@ -142,8 +142,8 @@ module branch_unit
     logic br_use_signed;
     always_ff @(posedge clk) begin
         if (issue_stage_ready) begin
-            jalr <= (~decode_stage.instruction[3] & decode_stage.instruction[2]);
-            jal_or_jalr <= decode_stage.instruction[2];
+            jalr <= (~instruction[3] & instruction[2]);
+            jal_or_jalr <= instruction[2];
             br_use_signed <= !(instruction.fn3 inside {BLTU_fn3, BGEU_fn3});
         end
     end

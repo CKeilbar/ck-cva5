@@ -170,13 +170,13 @@ package cva5_config;
         //ISA options
         modes_t MODES;
 
-        bit INCLUDE_IFENCE; //local mem operations only
+        bit INCLUDE_IFENCE;
         bit INCLUDE_AMO;
         bit INCLUDE_CBO; //Data cache invalidation operations
 
         //Units
         units_t INCLUDE_UNIT; //Value of ALU, LS, BR, and GC ignored
-    
+
         //CSR constants
         csr_config_t CSRS;
         //Memory Options
@@ -311,7 +311,7 @@ package cva5_config;
         },
         INCLUDE_ILOCAL_MEM : 0,
         ILOCAL_MEM_ADDR : '{
-            L : 32'h80000000, 
+            L : 32'h80000000,
             H : 32'h8FFFFFFF
         },
         INCLUDE_DLOCAL_MEM : 0,
@@ -321,7 +321,7 @@ package cva5_config;
         },
         INCLUDE_IBUS : 0,
         IBUS_ADDR : '{
-            L : 32'h60000000, 
+            L : 32'h60000000,
             H : 32'h6FFFFFFF
         },
         INCLUDE_PERIPHERAL_BUS : 1,

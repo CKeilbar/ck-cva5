@@ -35,7 +35,7 @@ module alu_unit
         output unit_needed,
         output logic [REGFILE_READ_PORTS-1:0] uses_rs,
         output logic uses_rd,
-        
+
         input issue_packet_t issue_stage,
         input logic issue_stage_ready,
         input logic [31:0] constant_alu,
@@ -51,6 +51,12 @@ module alu_unit
         LOGIC_AND = 2'b10,
         LOGIC_OTHER = 2'b11
     } logic_op_t;
+    typedef enum logic [1:0] {
+        ALU_CONSTANT = 2'b00,
+        ALU_ADD_SUB = 2'b01,
+        ALU_SLT = 2'b10,
+        ALU_SHIFT = 2'b11
+    } alu_op_t;
 
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
 
@@ -77,22 +83,22 @@ module alu_unit
     //Decode
     assign instruction = decode_stage.instruction;
 
-    assign unit_needed = decode_stage.instruction inside {
+    assign unit_needed = instruction inside {
         LUI, AUIPC, JAL, JALR,
         ADDI, SLLI, SLTI, SLTIU, XORI, SRLI, SRAI, ORI, ANDI,
         ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
     };
     always_comb begin
         uses_rs = '0;
-        uses_rs[RS1] = decode_stage.instruction inside {
+        uses_rs[RS1] = instruction inside {
             JALR,
             ADDI, SLLI, SLTI, SLTIU, XORI, SRLI, SRAI, ORI, ANDI,
             ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
         };
-        uses_rs[RS2] = decode_stage.instruction inside {
+        uses_rs[RS2] = instruction inside {
             ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
         };
-        uses_rd = decode_stage.instruction inside {
+        uses_rd = instruction inside {
             LUI, AUIPC, JAL, JALR,
             ADDI, SLLI, SLTI, SLTIU, XORI, SRLI, SRAI, ORI, ANDI,
             ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
@@ -102,7 +108,7 @@ module alu_unit
     always_comb begin
         case (instruction.upper_opcode) inside
             LUI_T, AUIPC_T, JAL_T, JALR_T : alu_op = ALU_CONSTANT;
-            default : 
+            default :
             case (instruction.fn3) inside
                 XOR_fn3, OR_fn3, AND_fn3, SLTU_fn3, SLT_fn3 : alu_op = ALU_SLT;
                 SLL_fn3, SRA_fn3 : alu_op = ALU_SHIFT;
@@ -128,16 +134,16 @@ module alu_unit
             imm_type <= instruction.upper_opcode inside {ARITH_IMM_T};
             alu_op_r <= alu_op;
             logic_op_r <= logic_op;
-            subtract <= decode_stage.instruction inside {SUB, SLTI, SLTIU, SLT, SLTU};
+            subtract <= instruction inside {SUB, SLTI, SLTIU, SLT, SLTU};
             is_slt <= instruction.fn3 inside {SLT_fn3, SLTU_fn3};
         end
     end
 
     ////////////////////////////////////////////////////
     //Issue
-    //Logic ops put through the adder carry chain to reduce resources
-    //TODO: explore moving this mux into the regfile bypass mux
     assign rs2_data = imm_type ? 32'(signed'(issue_stage.instruction[31:20])) : rf[RS2];
+
+    //Logical ops
     always_comb begin
         case (logic_op_r)
             LOGIC_XOR : logic_and_upper_slt = rf[RS1] ^ rs2_data;
@@ -152,7 +158,7 @@ module alu_unit
     assign sign_ext_adder2 = {(rs2_data[31] & ~issue_stage.fn3[0]) ^ subtract, rs2_data ^ {32{subtract}}};
 
     assign {add_sub_result, add_sub_carry_in} = {sign_ext_adder1, 1'b1} + {sign_ext_adder2, subtract};
-    
+
     //Shift ops
     barrel_shifter shifter (
         .shifter_input(rf[RS1]),
